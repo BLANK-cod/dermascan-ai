@@ -1,4 +1,4 @@
-import { Activity, Cpu, Gauge, Timer, TrendingUp, Zap } from "lucide-react";
+import { Activity, ArrowUpRight, Cpu, Gauge, ShieldCheck, Sparkles, Timer, TrendingUp, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { getDashboardStats } from "../services/api";
@@ -26,12 +26,33 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold text-mist-100">Dashboard</h1>
-        <p className="text-sm text-mist-500">Overview of your prediction activity</p>
-      </div>
+      <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-gradient-to-br from-scan-500/20 via-ink-800 to-ink-900 p-6 shadow-[0_25px_80px_rgba(0,0,0,0.35)] sm:p-8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(23,233,192,0.25),_transparent_40%)]" />
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-scan-500/30 bg-scan-500/10 px-3 py-1 text-sm text-scan-300">
+              <Sparkles size={16} />
+              AI healthcare insights
+            </div>
+            <h1 className="mt-4 font-display text-3xl font-semibold tracking-tight text-mist-100 sm:text-4xl">
+              Welcome back to your Dermascan AI workspace
+            </h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-mist-400 sm:text-base">
+              Monitor diagnostic activity, review model confidence, and continue building trust in every prediction.
+            </p>
+          </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <a
+            href="/predict"
+            className="group inline-flex items-center justify-center gap-2 self-start rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-medium text-mist-100 backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white/15"
+          >
+            Open prediction workspace
+            <ArrowUpRight size={16} className="transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </a>
+        </div>
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard label="Total Predictions" value={stats?.total_predictions ?? 0} icon={Activity} />
         <StatCard label="Predictions Today" value={stats?.predictions_today ?? 0} icon={TrendingUp} accent="amber" />
         <StatCard
@@ -56,15 +77,48 @@ export default function DashboardPage() {
         />
       </div>
 
-      <div className="card p-6">
-        <p className="text-sm text-mist-300">
-          Upload a dermoscopic image on the{" "}
-          <a href="/predict" className="text-scan-400 hover:underline">
-            Prediction
-          </a>{" "}
-          page to get started — DermaScan AI will classify it into one of 7 lesion
-          categories and generate an attention-rollout explainability map.
-        </p>
+      <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="rounded-[24px] border border-white/10 bg-white/10 p-6 backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-scan-500/15 text-scan-400">
+              <ShieldCheck size={20} />
+            </div>
+            <div>
+              <h2 className="font-display text-lg font-semibold text-mist-100">Clinical workflow ready</h2>
+              <p className="text-sm text-mist-400">A seamless experience for rapid image analysis.</p>
+            </div>
+          </div>
+
+          <p className="mt-5 text-sm leading-7 text-mist-300 sm:text-base">
+            Upload a dermoscopic image on the{" "}
+            <a href="/predict" className="font-medium text-scan-400 transition hover:text-scan-300 hover:underline">
+              Prediction
+            </a>{" "}
+            page to get started — DermaScan AI will classify it into one of 7 lesion
+            categories and generate an attention-rollout explainability map.
+          </p>
+        </div>
+
+        <div className="rounded-[24px] border border-white/10 bg-gradient-to-br from-white/15 to-white/5 p-6 backdrop-blur-xl">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-mist-200">System status</p>
+            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
+              <span className="h-2 w-2 rounded-full bg-emerald-400" />
+              Online
+            </span>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-ink-900/70 p-4">
+              <p className="text-xs uppercase tracking-[0.3em] text-mist-500">Active model</p>
+              <p className="mt-2 font-display text-xl font-semibold text-mist-100">{stats?.current_model ?? "—"}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-ink-900/70 p-4">
+              <p className="text-xs uppercase tracking-[0.3em] text-mist-500">Confidence target</p>
+              <p className="mt-2 font-display text-xl font-semibold text-mist-100">{((stats?.average_confidence ?? 0) * 100).toFixed(1)}%</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
