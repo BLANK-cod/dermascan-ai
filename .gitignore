@@ -1,0 +1,32 @@
+# Python
+backend/.venv/
+backend/__pycache__/
+backend/**/*.pyc
+
+# React
+frontend/node_modules/
+frontend/dist/
+
+# Environment
+backend/.env
+frontend/.env
+
+# Upload folders
+backend/storage/uploads/
+backend/storage/explainability/
+backend/models/deit_ag_gelu_best.pth
+backend/models/
+
+# VS Code
+.vscode/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Python cache
+*.pyc
+*.pyo
+
+# Logs
+*.log
