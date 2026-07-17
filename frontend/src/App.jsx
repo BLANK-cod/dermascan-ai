@@ -7,6 +7,7 @@ import AdminPage from "./pages/AdminPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import DashboardPage from "./pages/DashboardPage";
 import HistoryPage from "./pages/HistoryPage";
+import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import ModelInfoPage from "./pages/ModelInfoPage";
 import PredictionPage from "./pages/PredictionPage";
@@ -21,10 +22,19 @@ export default function App() {
           <Toaster
             position="top-right"
             toastOptions={{
-              style: { background: "#121A26", color: "#EAF2F1", border: "1px solid #26333F" },
+              style: {
+                background: "rgba(17, 26, 46, 0.9)",
+                color: "#E6EDF7",
+                border: "1px solid rgba(255,255,255,0.08)",
+                backdropFilter: "blur(12px)",
+                borderRadius: "14px",
+              },
+              success: { iconTheme: { primary: "#14B8A6", secondary: "#0B1220" } },
+              error: { iconTheme: { primary: "#FB7185", secondary: "#0B1220" } },
             }}
           />
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 

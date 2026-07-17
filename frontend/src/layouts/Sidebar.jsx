@@ -7,7 +7,9 @@ import {
   LayoutGrid,
   ScanFace,
   Shield,
+  Sparkles,
   User,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { NavLink } from "react-router-dom";
@@ -22,70 +24,139 @@ const NAV_ITEMS = [
   { to: "/profile", label: "Profile", icon: User },
 ];
 
-export default function Sidebar() {
+function BrandMark({ small = false }) {
+  return (
+    <div className="relative shrink-0" style={{ width: small ? 32 : 36, height: small ? 32 : 36 }}>
+      <div className="absolute inset-0 rounded-xl bg-grad-primary opacity-90 blur-[6px]" />
+      <div className="relative h-full w-full rounded-xl bg-grad-primary flex items-center justify-center text-ink-950 shadow-glow">
+        <Sparkles size={small ? 16 : 18} strokeWidth={2.5} />
+      </div>
+    </div>
+  );
+}
+
+function NavItem({ to, label, icon: Icon, collapsed, danger, onNavigate }) {
+  const activeCls = danger
+    ? "bg-clinic-coral/10 text-clinic-coral border-clinic-coral/30 shadow-[0_0_20px_-6px_rgba(251,113,133,0.4)]"
+    : "bg-scan-500/10 text-scan-400 border-scan-500/40 shadow-[0_0_20px_-6px_rgba(20,184,166,0.45)]";
+  return (
+    <NavLink
+      to={to}
+      onClick={onNavigate}
+      className={({ isActive }) =>
+        `group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium border border-transparent transition-all ${
+          isActive ? activeCls : "text-mist-300 hover:bg-white/[0.04] hover:text-mist-100 hover:border-white/10"
+        }`
+      }
+      title={collapsed ? label : undefined}
+    >
+      <Icon size={18} className="shrink-0" />
+      {!collapsed && <span className="truncate">{label}</span>}
+    </NavLink>
+  );
+}
+
+export default function Sidebar({ mobileOpen, onMobileClose }) {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
 
-  return (
-    <aside
-      className={`hidden md:flex flex-col shrink-0 border-r border-ink-600/60 bg-ink-900 transition-all duration-300 ${
-        collapsed ? "w-[76px]" : "w-64"
-      }`}
-    >
-      <div className="flex items-center gap-3 px-5 h-16 border-b border-ink-600/60">
-        <div className="relative h-8 w-8 shrink-0 rounded-full border-2 border-scan-500">
-          <span className="absolute inset-1 rounded-full bg-scan-500/20 animate-pulse" />
-        </div>
+  const inner = (onNavigate) => (
+    <>
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-white/[0.06]">
+        <BrandMark />
         {!collapsed && (
-          <span className="font-display font-semibold tracking-tight text-mist-100">
-            DermaScan <span className="text-scan-400">AI</span>
-          </span>
+          <div className="min-w-0">
+            <p className="font-display font-bold tracking-tight text-mist-100 leading-none">
+              DermaScan <span className="text-gradient">AI</span>
+            </p>
+            <p className="text-[10px] uppercase tracking-widest text-mist-500 mt-1">
+              Clinical Console
+            </p>
+          </div>
+        )}
+        {onMobileClose && (
+          <button
+            className="ml-auto md:hidden rounded-lg p-2 text-mist-500 hover:bg-white/5"
+            onClick={onMobileClose}
+          >
+            <X size={18} />
+          </button>
         )}
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                isActive
-                  ? "bg-scan-500/10 text-scan-400 border border-scan-500/30"
-                  : "text-mist-300 hover:bg-ink-800 hover:text-mist-100"
-              }`
-            }
-            title={collapsed ? label : undefined}
-          >
-            <Icon size={18} className="shrink-0" />
-            {!collapsed && <span>{label}</span>}
-          </NavLink>
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        {!collapsed && (
+          <p className="px-3 pb-2 text-[10px] uppercase tracking-widest text-mist-500 font-semibold">
+            Workspace
+          </p>
+        )}
+        {NAV_ITEMS.map((item) => (
+          <NavItem key={item.to} {...item} collapsed={collapsed} onNavigate={onNavigate} />
         ))}
-
         {user?.is_admin && (
-          <NavLink
-            to="/admin"
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                isActive
-                  ? "bg-clinic-coral/10 text-clinic-coral border border-clinic-coral/30"
-                  : "text-mist-300 hover:bg-ink-800 hover:text-mist-100"
-              }`
-            }
-            title={collapsed ? "Admin" : undefined}
-          >
-            <Shield size={18} className="shrink-0" />
-            {!collapsed && <span>Admin</span>}
-          </NavLink>
+          <>
+            {!collapsed && (
+              <p className="px-3 pt-4 pb-2 text-[10px] uppercase tracking-widest text-mist-500 font-semibold">
+                Administration
+              </p>
+            )}
+            <NavItem
+              to="/admin"
+              label="Admin"
+              icon={Shield}
+              collapsed={collapsed}
+              danger
+              onNavigate={onNavigate}
+            />
+          </>
         )}
       </nav>
 
+      {!collapsed && (
+        <div className="mx-3 mb-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 backdrop-blur">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-scan-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-scan-500" />
+            </span>
+            <p className="text-xs font-medium text-mist-100">Model online</p>
+          </div>
+          <p className="mt-1 text-[11px] text-mist-500">DeiT + AG-GELU · 7-class</p>
+        </div>
+      )}
+
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="flex items-center justify-center gap-2 mx-3 mb-4 rounded-xl py-2.5 text-mist-500 hover:text-scan-400 hover:bg-ink-800 transition"
+        className="hidden md:flex items-center justify-center gap-2 mx-3 mb-4 rounded-xl py-2.5 text-mist-500 hover:text-scan-400 hover:bg-white/[0.04] transition"
       >
         {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
       </button>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop */}
+      <aside
+        className={`hidden md:flex flex-col shrink-0 border-r border-white/[0.06] bg-ink-900/70 backdrop-blur-xl transition-all duration-300 ${
+          collapsed ? "w-[76px]" : "w-64"
+        }`}
+      >
+        {inner()}
+      </aside>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div
+            className="absolute inset-0 bg-ink-950/70 backdrop-blur-sm animate-fade-in"
+            onClick={onMobileClose}
+          />
+          <aside className="absolute left-0 top-0 h-full w-72 flex flex-col bg-ink-900/95 backdrop-blur-xl border-r border-white/10 shadow-2xl animate-fade-in">
+            {inner(onMobileClose)}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

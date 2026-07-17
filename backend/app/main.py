@@ -1,3 +1,4 @@
+from app.models import *
 from app.database.base import Base
 from app.database.session import engine
 
