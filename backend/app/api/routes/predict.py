@@ -16,6 +16,10 @@ from app.services.explainability_service import (
     generate_explainability_map,
 )
 from app.services.model_service import ModelNotLoadedError, model_service
+from app.utils.morphology import extract_morphology
+from app.services.stage_estimation import estimate_stage
+from app.services.segmentation_service import segmentation_service, SegmentationNotAvailableError
+import numpy as np
 
 router = APIRouter(tags=["prediction"])
 
@@ -74,6 +78,45 @@ async def predict(
         explainability_path = str(out_path)
     except ExplainabilityNotAvailableError:
         pass  # model not fully integrated yet; prediction still saved
+    # Run U-Net segmentation (if available), save mask, then extract morphology and estimate stage
+    morphology = None
+    thickness_score = None
+    clinical_stage = None
+
+    try:
+        print("===================================")
+        print("Segmentation loaded:", segmentation_service.is_loaded)
+        print("===================================")
+        if segmentation_service.is_loaded:
+            print("Running U-Net...")
+            mask_arr = segmentation_service.predict_mask(image)
+            print("Mask shape:", mask_arr.shape)
+            seg_dir = Path(settings.UPLOAD_DIR).parent / "segmentation" / "images"
+            seg_dir.mkdir(parents=True, exist_ok=True)
+            print("Saving mask...")
+            filename = Path(image_path).stem + ".png"
+            mask_path = seg_dir / filename
+
+            mask_img = Image.fromarray((mask_arr * 255).astype("uint8"))
+            mask_img.save(mask_path)
+            print("Mask saved:", mask_path)
+
+            morphology = extract_morphology(mask_arr, original_image=image)
+            print("Morphology:", morphology)
+
+            thickness_score, clinical_stage = estimate_stage(morphology)
+            print("Stage:", clinical_stage)
+        else:
+            print("❌ Segmentation model is NOT loaded")
+    except Exception as e:
+        print("\n========== SEGMENTATION ERROR ==========")
+        print(e)
+        import traceback
+        traceback.print_exc()
+        print("========================================\n")
+        morphology = None
+        thickness_score = None
+        clinical_stage = None
 
     prediction = prediction_service.create_prediction(
         db,
@@ -85,6 +128,9 @@ async def predict(
         inference_time_ms=result["inference_time_ms"],
         explainability_path=explainability_path,
         model_name=settings.MODEL_NAME,
+        morphology=morphology,
+        thickness_score=thickness_score,
+        clinical_stage=clinical_stage,
     )
     return prediction
 

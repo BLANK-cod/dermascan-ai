@@ -18,3 +18,4 @@ transformers==4.44.2
 timm==1.0.9
 python-dotenv==1.0.1
 aiofiles==24.1.0
+tensorflow>=2.13.0

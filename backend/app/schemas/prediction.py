@@ -15,6 +15,9 @@ class PredictionOut(BaseModel):
     explainability_path: str | None
     explainability_method: str
     model_name: str
+    thickness_score: float | None = None
+    clinical_stage: str | None = None
+    morphology: dict | None = None
     created_at: datetime
 
 

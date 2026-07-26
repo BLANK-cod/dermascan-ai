@@ -7,6 +7,9 @@ export default defineConfig({
   server: {
     host: "::",
     port: 8080,
+    allowedHosts: [
+      "b3eb-103-41-98-108.ngrok-free.app",
+    ],
     proxy: {
       "/api": "http://127.0.0.1:8000",
       "/static": "http://127.0.0.1:8000",

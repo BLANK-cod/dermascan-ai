@@ -26,6 +26,10 @@ class Prediction(Base):
     explainability_method: Mapped[str] = mapped_column(String(50), default="attention_rollout")
 
     model_name: Mapped[str] = mapped_column(String(100), default="DeiT + AG-GELU")
+    # Morphology and staging (rule-based additions)
+    morphology: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    thickness_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    clinical_stage: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, index=True)
 
     user = relationship("User", back_populates="predictions")
