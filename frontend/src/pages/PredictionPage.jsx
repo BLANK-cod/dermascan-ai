@@ -324,119 +324,188 @@ export default function PredictionPage() {
   const tone = risk ? TONE[risk.tone] : null;
   const info = result ? DISEASE_INFO[predictedClassKey] : null;
 
-  function downloadPdf() {
+  async function downloadPdf() {
     if (!result) return;
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const W = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const M = 28; // reduced page margin to fit on one page
+    const contentW = W - M * 2;
     let y = 56;
+    const lineHeight = 12;
+    const sectionGap = 8;
+
+    const ensureSpace = (_needed = 0) => {
+      // Keep everything on a single page; do not add pages.
+      // We reduced margins, image sizes and font sizes elsewhere to help fit.
+      return;
+    };
+
+    // Helper: fetch an image URL and convert to a data URL (base64)
+    const fetchToDataUrl = async (url) => {
+      if (!url) return null;
+      try {
+        const res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = reject;
+          reader.onload = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        return null;
+      }
+    };
+
+    // Try to fetch input and explainability images (if available)
+    const inputUrl = originalImageUrl || previewUrl;
+    const explUrl = explainabilityImageUrl || explainability?.explainability_image_url;
+    const [inputDataUrl, explDataUrl] = await Promise.all([
+      fetchToDataUrl(inputUrl),
+      fetchToDataUrl(explUrl),
+    ]);
 
     // Header bar
     doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, W, 80, "F");
     doc.setTextColor(56, 189, 248);
-    doc.setFont("helvetica", "bold");
+    doc.setFont("courier", "bold");
     doc.setFontSize(20);
     doc.text("DermaScan AI — Prediction Report", 40, 42);
     doc.setTextColor(200, 220, 235);
-    doc.setFont("helvetica", "normal");
+    doc.setFont("courier", "normal");
     doc.setFontSize(10);
     doc.text(new Date().toLocaleString(), 40, 62);
 
     y = 110;
     doc.setTextColor(15, 23, 42);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text("Predicted diagnosis", 40, y);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(16);
-    y += 22;
-    doc.text(
-      `${CLASS_LABELS[result.predicted_class] || result.predicted_class} (${result.predicted_class})`,
-      40,
-      y
-    );
+    doc.setFont("courier", "bold");
+    doc.setFontSize(10);
+    doc.text("Predicted diagnosis", M, y);
+    // draw a subtle divider under the label
+    doc.setDrawColor(220);
+    doc.line(M, y + 6, W - M, y + 6);
 
-    y += 26;
-    doc.setFontSize(11);
-    doc.setFont("helvetica", "bold");
-    doc.text("Confidence:", 40, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(`${(result.confidence * 100).toFixed(2)}%`, 130, y);
+    // Diagnosis value (may be long) — wrap and advance Y correctly
+    doc.setFont("courier", "normal");
+    doc.setFontSize(14);
+    const predText = `${CLASS_LABELS[result.predicted_class] || result.predicted_class} (${result.predicted_class})`;
+    const predLines = doc.splitTextToSize(predText, contentW);
+    // small gap before value
+    y += 12;
+    doc.text(predLines, M, y);
+    // advance y by number of lines * approximate line height + some padding
+    y += predLines.length * (lineHeight + 2) + sectionGap;
 
-    doc.setFont("helvetica", "bold");
-    doc.text("Inference time:", 260, y);
-    doc.setFont("helvetica", "normal");
-    doc.text(`${result.inference_time_ms} ms`, 360, y);
+    // Render key stats as stacked rows to avoid collisions
+    ensureSpace(160);
+    const rightX = W - M - 10;
+    const rowH = 18;
 
-    if (result.thickness_score) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Thickness (proxy):", 40, y + 18);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${result.thickness_score} mm`, 160, y + 18);
-    }
+    const addRow = (label, value) => {
+      doc.setFont("courier", "bold");
+      doc.setFontSize(11);
+      doc.text(label, M, y);
+      doc.setFont("courier", "normal");
+      doc.setFontSize(11);
+      doc.text(value, rightX, y, { align: "right" });
+      y += rowH + 6;
+    };
 
-    if (result.clinical_stage) {
-      doc.setFont("helvetica", "bold");
-      doc.text("Estimated stage:", 260, y + 18);
-      doc.setFont("helvetica", "normal");
-      doc.text(`${result.clinical_stage}`, 360, y + 18);
-    }
+    addRow("Confidence:", `${(result.confidence * 100).toFixed(2)}%`);
+    if (result.thickness_score) addRow("Thickness (proxy):", `${result.thickness_score} mm`);
+    addRow("Inference time:", `${result.inference_time_ms} ms`);
+    if (result.clinical_stage) addRow("Estimated stage:", `${result.clinical_stage}`);
+    if (risk) addRow("Risk level:", risk.label);
 
-    if (risk) {
-      y += 18;
-      doc.setFont("helvetica", "bold");
-      doc.text("Risk level:", 40, y);
-      doc.setFont("helvetica", "normal");
-      doc.text(risk.label, 130, y);
+    // Embed explainability images side-by-side (if available)
+    if (inputDataUrl || explDataUrl) {
+      y += 12;
+      ensureSpace(140);
+      const gap = 10;
+      const maxW = W - M * 2; // left+right margins
+      const both = inputDataUrl && explDataUrl;
+      const imgW = both ? (maxW - gap) / 2 : Math.min(maxW, 220);
+      const imgH = 110; // reduced height to help fit on single page
+
+      if (inputDataUrl) {
+        const mime = inputDataUrl.split(';')[0].split(":")[1] || "image/jpeg";
+        const type = mime.includes("png") ? "PNG" : "JPEG";
+        try {
+          doc.addImage(inputDataUrl, type, 40, y, imgW, imgH);
+        } catch (e) {
+          // fall back: ignore image if addImage fails
+        }
+      }
+
+      if (explDataUrl) {
+        const mime2 = explDataUrl.split(';')[0].split(":")[1] || "image/jpeg";
+        const type2 = mime2.includes("png") ? "PNG" : "JPEG";
+        const xPos = both ? M + imgW + gap : M;
+        try {
+          doc.addImage(explDataUrl, type2, xPos, y, imgW, imgH);
+        } catch (e) {
+          // ignore image errors
+        }
+      }
+
+      y += imgH + sectionGap + 4;
     }
 
     // About
     if (info) {
-      y += 34;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("About this condition", 40, y);
+      ensureSpace(120);
+      y += 6;
+      doc.setFont("courier", "bold");
+      doc.setFontSize(11);
+      doc.text("About this condition", M, y);
       y += 6;
       doc.setDrawColor(220);
-      doc.line(40, y, W - 40, y);
+      doc.line(M, y, W - M, y);
       y += 16;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10.5);
-      const aboutLines = doc.splitTextToSize(info.about, W - 80);
-      doc.text(aboutLines, 40, y);
-      y += aboutLines.length * 14 + 10;
+      doc.setFont("courier", "normal");
+      doc.setFontSize(9.5);
+      const aboutLines = doc.splitTextToSize(info.about, contentW);
+      doc.text(aboutLines, M, y);
+      y += aboutLines.length * (lineHeight + 2) + sectionGap;
 
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(12);
-      doc.text("Recommendations", 40, y);
+      doc.setFont("courier", "bold");
+      doc.setFontSize(11);
+      doc.text("Recommendations", M, y);
       y += 6;
-      doc.line(40, y, W - 40, y);
-      y += 16;
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10.5);
+      doc.line(M, y, W - M, y);
+      y += 12;
+      doc.setFont("courier", "normal");
+      doc.setFontSize(9.5);
       info.recommendations.forEach((r) => {
-        const lines = doc.splitTextToSize(`• ${r}`, W - 80);
-        doc.text(lines, 40, y);
-        y += lines.length * 14 + 2;
+        const lines = doc.splitTextToSize(`• ${r}`, contentW);
+        doc.text(lines, M, y);
+        y += lines.length * (lineHeight + 2) + 6;
       });
     }
 
     // Probabilities table
-    y += 14;
-    doc.setFont("helvetica", "bold");
+    ensureSpace(200);
+    y += sectionGap;
+    doc.setFont("courier", "bold");
     doc.setFontSize(12);
-    doc.text("Class probabilities", 40, y);
-    y += 6;
-    doc.line(40, y, W - 40, y);
-    y += 16;
-    doc.setFont("helvetica", "normal");
+    doc.text("Class probabilities", M, y);
+    y += 8;
+    doc.line(M, y, W - M, y);
+    y += 12;
+    doc.setFont("courier", "normal");
     doc.setFontSize(10.5);
     Object.entries(result.probabilities)
       .sort((a, b) => b[1] - a[1])
       .forEach(([cls, prob]) => {
-        doc.text(`${cls}  —  ${CLASS_LABELS[cls] || cls}`, 40, y);
-        doc.text(`${(prob * 100).toFixed(2)}%`, W - 80, y, { align: "right" });
-        y += 16;
+        ensureSpace(32);
+        const label = `${cls}  —  ${CLASS_LABELS[cls] || cls}`;
+        const labelLines = doc.splitTextToSize(label, contentW - 80);
+        doc.text(labelLines, M, y);
+        doc.text(`${(prob * 100).toFixed(2)}%`, W - M - 40, y, { align: "right" });
+        y += labelLines.length * (lineHeight + 2) + 8;
       });
 
     // Footer disclaimer
