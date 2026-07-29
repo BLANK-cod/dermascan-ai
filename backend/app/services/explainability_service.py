@@ -6,15 +6,15 @@ convolutional feature map) does not apply. Instead this module implements
 **Attention Rollout** (Abnar & Zuidema, 2020), the standard technique for
 visualizing what a ViT attends to:
 
-  1. Collect the self-attention weight matrices from every transformer block
-     during the forward pass (averaged across heads).
-  2. Add the identity matrix to each (to account for the residual/skip
-     connection) and re-normalize so each row sums to 1.
-  3. Multiply the per-layer matrices together to "roll out" attention from
-     the output back to the input patch tokens.
-  4. Take the row corresponding to the [CLS] token, reshape the remaining
-     patch-token scores into a (H/patch x W/patch) grid, and upsample to
-     the original image size to get a heatmap.
+1. Collect the self-attention weight matrices from every transformer block
+   during the forward pass (averaged across heads).
+2. Add the identity matrix to each (to account for the residual/skip
+   connection) and re-normalize so each row sums to 1.
+3. Multiply the per-layer matrices together to "roll out" attention from
+   the output back to the input patch tokens.
+4. Take the row corresponding to the [CLS] token, reshape the remaining
+   patch-token scores into a (H/patch x W/patch) grid, and upsample to
+   the original image size to get a heatmap.
 
 This module is written against the *interface* in model_service
 (`get_last_attention_maps`) and will work as soon as the real DeiT forward
@@ -38,14 +38,13 @@ def attention_rollout(attention_maps: list, discard_ratio: float = 0.0) -> np.nd
     """
     attention_maps: list of (num_heads, tokens, tokens) arrays, one per
     transformer block, captured during the forward pass.
-    Returns a (tokens,) array — attention from CLS token to every other
-    token after rolling out through all layers.
+    Returns a (tokens,) array — attention from CLS token to every other token
+    after rolling out through all layers.
     """
     result = np.eye(attention_maps[0].shape[-1])
 
     for attn in attention_maps:
-
-    # Convert torch tensor to numpy if needed
+        # Convert torch tensor to numpy if needed
         if hasattr(attn, "detach"):
             attn = attn.detach().cpu().numpy()
 
@@ -54,7 +53,7 @@ def attention_rollout(attention_maps: list, discard_ratio: float = 0.0) -> np.nd
             # (12, 197, 197)     -> heads, tokens, tokens
 
         if attn.ndim == 4:
-            attn = attn[0]          # remove batch dimension
+            attn = attn[0]  # remove batch dimension
 
         # Average over attention heads
         attn_avg = attn.mean(axis=0)
@@ -99,7 +98,7 @@ def render_heatmap_overlay(
     h, w = img_rgb.shape[:2]
 
     heatmap = cv2.resize(grid, (w, h), interpolation=cv2.INTER_CUBIC)
-    heatmap = np.uint8(255 * heatmap)
+    heatmap = np.clip(heatmap * 255, 0, 255).astype(np.uint8)
     heatmap_color = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
     heatmap_color = cv2.cvtColor(heatmap_color, cv2.COLOR_BGR2RGB)
 
@@ -129,3 +128,4 @@ def generate_explainability_map(
 
     cls_attention = attention_rollout(attention_maps)
     return render_heatmap_overlay(original_image, cls_attention, patch_grid_size, output_path)
+    

@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import logging
 from pathlib import Path
 from typing import Optional
@@ -25,6 +29,7 @@ class SegmentationService:
     def _try_load(self) -> None:
         try:
             import tensorflow as tf
+            tf.get_logger().setLevel("ERROR")
         except Exception as exc:
             logger.warning("TensorFlow not available for U-Net segmentation: %s", exc)
             self._loaded = False
@@ -62,12 +67,13 @@ class SegmentationService:
         import cv2
         import numpy as np
         import tensorflow as tf
+        tf.get_logger().setLevel("ERROR")
 
         orig_w, orig_h = image.size
         target_h, target_w = self._input_size or (256, 256)
 
         img = image.convert("RGB")
-        img_resized = img.resize((target_w, target_h), Image.BILINEAR)
+        img_resized = img.resize((target_w, target_h), Image.Resampling.BILINEAR)
         arr = np.asarray(img_resized).astype("float32") / 255.0
         inp = np.expand_dims(arr, axis=0)
 

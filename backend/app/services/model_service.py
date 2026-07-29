@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import numpy as np
 from PIL import Image
@@ -70,8 +70,13 @@ class DermaScanModel:
 
         checkpoint_path = Path(settings.MODEL_PATH)
 
-        print("Checkpoint Path:", checkpoint_path.resolve())
-        print("Exists:", checkpoint_path.exists())
+        #print("Checkpoint Path:", checkpoint_path.resolve())
+        #print("Exists:", checkpoint_path.exists())
+        
+        if checkpoint_path.exists():
+            print("✓ Checkpoint found")
+        else:
+            raise FileNotFoundError(f"Checkpoint not found: {checkpoint_path}")
 
         if not checkpoint_path.exists():
             # No checkpoint yet — app stays up, /predict will return a
@@ -101,6 +106,13 @@ class DermaScanModel:
                 state_dict = state_dict["state_dict"]
             elif "model_state_dict" in state_dict:
                 state_dict = state_dict["model_state_dict"]
+        
+        # print("=" * 60)
+        # print("State Dict Type:", type(state_dict))
+        # print("First 10 Keys:")
+        # for key in list(state_dict.keys())[:10]:
+        #     print(key)
+        # print("=" * 60)
 
         #self._model.load_state_dict(state_dict)
 
@@ -113,17 +125,28 @@ class DermaScanModel:
         print("Missing keys:", len(missing))
         print("Unexpected keys:", len(unexpected))
 
-        print("\nFirst 20 Missing Keys")
-        for k in missing[:20]:
-            print(k)
+        if missing:
+            print("\nMissing Keys:")
+            for k in missing[:20]:
+                print(" -", k)
 
-        print("\nFirst 20 Unexpected Keys")
-        for k in unexpected[:20]:
-            print(k)
+        if unexpected:
+            print("\nUnexpected Keys:")
+            for k in unexpected[:20]:
+                print(" -", k)
+
         print("=" * 60)
 
         self._model.to(self._device)
         self._model.eval()
+        
+        # print("=" * 60)
+        # print("Model classifier shape:", self._model.classifier.weight.shape)
+
+        # if "classifier.weight" in state_dict:
+        #     print("Checkpoint classifier shape:", state_dict["classifier.weight"].shape)
+
+        # print("=" * 60)
 
         self._loaded = True
 
@@ -148,7 +171,9 @@ class DermaScanModel:
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ]
         )
-        tensor = transform(image.convert("RGB")).unsqueeze(0)
+        tensor = transform(image.convert("RGB"))
+        tensor = cast("torch.Tensor", tensor)
+        tensor = torch.unsqueeze(tensor, 0)
         return tensor.to(self._device)
 
     # ------------------------------------------------------------------
@@ -157,7 +182,7 @@ class DermaScanModel:
     def predict(self, image: Image.Image) -> dict:
         """
         Runs inference and returns:
-          {predicted_class, confidence, probabilities: {cls: prob}, inference_time_ms}
+        {predicted_class, confidence, probabilities: {cls: prob}, inference_time_ms}
         Raises ModelNotLoadedError if the checkpoint hasn't been wired up yet.
         """
         if not self._loaded or self._model is None:

@@ -1,5 +1,6 @@
 import torch.nn as nn
 from transformers import AutoModelForImageClassification
+from transformers.utils import logging
 from transformers.activations import GELUActivation
 
 from app.services.activations import AGGELU
@@ -24,13 +25,15 @@ def replace_ag_gelu(module):
 
 
 def build_deit_ag_gelu(num_classes: int):
+    logging.set_verbosity_error()
 
     model = AutoModelForImageClassification.from_pretrained(
         HF_MODEL_NAME,
         num_labels=num_classes,
         ignore_mismatched_sizes=True,
         output_attentions=True,
-        attn_implementation="eager"
+        attn_implementation="eager",
+        local_files_only=True
     )
 
     #total = replace_ag_gelu(model)

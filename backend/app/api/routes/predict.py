@@ -104,7 +104,13 @@ async def predict(
             morphology = extract_morphology(mask_arr, original_image=image)
             print("Morphology:", morphology)
 
-            thickness_score, clinical_stage = estimate_stage(morphology)
+            morphology_numeric = {
+                k: float(v)
+                for k, v in morphology.items()
+                if isinstance(v, (int, float))
+            }
+
+            thickness_score, clinical_stage = estimate_stage(morphology_numeric)
             print("Stage:", clinical_stage)
         else:
             print("❌ Segmentation model is NOT loaded")

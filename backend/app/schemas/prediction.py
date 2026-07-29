@@ -4,7 +4,10 @@ from pydantic import BaseModel, ConfigDict
 
 
 class PredictionOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(
+        from_attributes=True,
+        protected_namespaces=()
+    )
 
     id: int
     image_path: str
@@ -48,6 +51,10 @@ class ExplainabilityOut(BaseModel):
 
 
 class DashboardStats(BaseModel):
+    model_config = ConfigDict(
+        from_attributes=True,
+        protected_namespaces=()
+    )
     total_predictions: int
     predictions_today: int
     average_confidence: float
